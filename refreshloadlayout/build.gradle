@@ -36,6 +36,6 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.7.0'
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
     implementation 'androidx.recyclerview:recyclerview:1.2.1'
-    //implementation "top.qinbaowei:expandableadapter:$rootProject.ext.expandableadapter_version"
+    implementation "top.qinbaowei:expandableadapterx:$rootProject.ext.expandableadapter_version"
     implementation "top.qinbaowei:log:$rootProject.ext.log_version"
 }
