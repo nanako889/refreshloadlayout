@@ -1,387 +1,413 @@
-package com.qbw.refreshloadlayout;
+package com.qbw.refreshloadlayout
 
-import android.content.Context;
-import android.os.Handler;
-import android.util.AttributeSet;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewConfiguration;
+import android.content.Context
+import android.util.AttributeSet
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewConfiguration
+import android.view.ViewGroup
+import androidx.annotation.StringRes
+import androidx.databinding.BaseObservable
+import androidx.databinding.Bindable
+import androidx.databinding.library.baseAdapters.BR
+import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.qbw.expandableadapterx.ExpandableAdapter
+import com.qbw.refreshloadlayout.RecyclerViewScrollUtil.isContentNearBottom
+import com.qinbaowei.refreshloadlayout.R
 
-import androidx.annotation.StringRes;
-import androidx.databinding.BaseObservable;
-import androidx.databinding.Bindable;
-import androidx.databinding.library.baseAdapters.BR;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-
-import com.qbw.l.L;
-import com.qinbaowei.refreshloadlayout.R;
-
-
-public class RefreshLoadLayout extends SwipeRefreshLayout {
-
+class RefreshLoadLayout : SwipeRefreshLayout {
     /**
      * 加载更多的状态
      * 正在加载，加载失败，没有更多
      */
-    private int mLoadStatus = Load.STATUS_LOADING;
+    var loadStatus = Load.STATUS_LOADING
+        private set
+
     /**
      * 是否显示加载更多
      */
-    private boolean mShowStatusUi;
+    private var showStatusUi = false
+
     /**
      * 是否正在执行加载更多的任务
      */
-    private boolean mTaskLoading;
+    private var taskLoading = false
+
     /**
      * 是否正在执行刷新任务
      */
-    private boolean mTaskRefreshing;
+    private var taskRefreshing = false
+    private var refreshLoadView: View? = null
+    private var onRefreshListener: OnRefreshListener? = null
+    private var onLoadListener: OnLoadListener? = null
 
-    private View mRefreshLoadView;
-    private OnRefreshListener mOnRefreshListener;
-    private OnLoadListener mOnLoadListener;
+    //private val handler = Handler()
+    private var setRefreshingRunn: SetRefreshingRunn? = null
+    var isLoadEnabled = true
+    private var refreshEnable = true
+    private var initialDownYValue = 0f
+    private var miniTouchSlop = 0
 
-    private Handler mHandler = new Handler();
-    private SetRefreshingRunn mSetRefreshingRunn;
-
-    private boolean mLoadEnabled = true;
-    private boolean mRefreshEnable = true;
-
-    private float mInitialDownYValue = 0;
-    private int miniTouchSlop;
-
-    public RefreshLoadLayout(Context context) {
-        super(context);
-        init(null);
+    constructor(context: Context?) : super(context!!) {
+        init(null)
     }
 
-    public RefreshLoadLayout(Context context, AttributeSet attrs) {
-        super(context, attrs);
-        init(attrs);
+    constructor(context: Context?, attrs: AttributeSet?) : super(
+        context!!, attrs
+    ) {
+        init(attrs)
     }
 
-    private void init(AttributeSet attrs) {
-        Context context = getContext();
-        miniTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop() * 8;
+    private fun init(attrs: AttributeSet?) {
+        val context = context
+        miniTouchSlop = ViewConfiguration.get(context).scaledTouchSlop * 8
         //setColorSchemeResources(R.color.colorPrimary, R.color.colorAccent);
         //setDistanceToTriggerSync((int) getResources().getDimension(R.dimen.dp100));
-        mSetRefreshingRunn = new SetRefreshingRunn(this);
+        setRefreshingRunn = SetRefreshingRunn(this)
     }
 
-    public interface OnLoadListener {
-        void onLoad();
+    interface OnLoadListener {
+        fun onLoad()
     }
 
-    public interface OnLoadFailedListener {
-        void onRetryLoad();
+    interface OnLoadFailedListener {
+        fun onRetryLoad()
     }
 
-    public void onComplete(boolean isRefresh) {
-        onComplete(isRefresh, 500);
-    }
-
-    public void onComplete(boolean isRefresh, long delayRefresh) {
+    @JvmOverloads
+    fun onComplete(isRefresh: Boolean, delayRefresh: Long = 500) {
         if (isRefresh) {
-            onCompleteWhenRefresh(false, delayRefresh);
+            onCompleteWhenRefresh(false, delayRefresh)
         } else {
-            setLoading(false);
+            setLoading(false)
         }
     }
 
-    private boolean isWorking() {
-        boolean b1 = isRefreshing();
-        boolean b2 = isLoading();
+    private fun isWorking(): Boolean {
+        val b1 = isRefreshing
+        val b2 = isLoading()
         //L.GL.d("isRefreshing=%b, isLoading=%b", b1, b2);
-        return b1 || b2;
+        return b1 || b2
     }
 
-    private boolean isCanLoad() {
-        boolean b1 = isWorking();
-        boolean b2 = Load.isLoadFailed(mLoadStatus);
-        boolean b3 = Load.isLoadNoMoreData(mLoadStatus);
+    private fun isCanLoad(): Boolean {
+        val b1 = isWorking()
+        val b2 = Load.isLoadFailed(loadStatus)
+        val b3 = Load.isLoadNoMoreData(loadStatus)
         //L.GL.d("isWorking=%b, isLoadFailed=%b, isLoadNoMore=%b", b1, b2, b3);
-        return !(b1 || b2 || b3) && mLoadEnabled;
+        return !(b1 || b2 || b3) && isLoadEnabled
     }
 
-    public boolean isLoadEnabled() {
-        return mLoadEnabled;
+
+    override fun setOnRefreshListener(listener: OnRefreshListener?) {
+        super.setOnRefreshListener(listener)
+        onRefreshListener = listener
     }
 
-    public void setLoadEnabled(boolean loadEnabled) {
-        mLoadEnabled = loadEnabled;
-    }
-
-    @Override
-    public void setOnRefreshListener(OnRefreshListener listener) {
-        super.setOnRefreshListener(listener);
-        mOnRefreshListener = listener;
-    }
-
-    private void notifyRefreshing() {
-        if (mOnRefreshListener != null) {
-            setStatusNoMoreData(false);
-            mOnRefreshListener.onRefresh();
+    private fun notifyRefreshing() {
+        if (onRefreshListener != null) {
+            setStatusNoMoreData(false)
+            onRefreshListener!!.onRefresh()
         }
     }
 
-    @Override
-    public void setRefreshing(boolean refreshing) {
-        onSetRefreshing(refreshing);
-        super.setRefreshing(refreshing);
+    override fun setRefreshing(refreshing: Boolean) {
+        onSetRefreshing(refreshing)
+        super.setRefreshing(refreshing)
     }
 
-    public void autoRefreshWithoutUi() {
-        onSetRefreshing(true);
+    fun autoRefreshWithoutUi() {
+        onSetRefreshing(true)
     }
 
-    private void onCompleteWhenRefresh(final boolean refreshing, long delay) {
-        mHandler.removeCallbacks(mSetRefreshingRunn);
-        onSetRefreshing(refreshing);
-        mHandler.postDelayed(mSetRefreshingRunn.refreshing(refreshing), delay);
+    private fun onCompleteWhenRefresh(refreshing: Boolean, delay: Long) {
+        handler.removeCallbacks(setRefreshingRunn!!)
+        onSetRefreshing(refreshing)
+        handler.postDelayed(setRefreshingRunn!!.refreshing(refreshing), delay)
     }
 
-    private static class SetRefreshingRunn implements Runnable {
-
-        private RefreshLoadLayout mRefreshLoadLayout;
-
-        private boolean mIsRefreshing;
-
-        public SetRefreshingRunn(RefreshLoadLayout refreshLoadLayout) {
-            mRefreshLoadLayout = refreshLoadLayout;
+    private class SetRefreshingRunn(private val mRefreshLoadLayout: RefreshLoadLayout) : Runnable {
+        private var isRefreshing = false
+        override fun run() {
+            mRefreshLoadLayout.isRefreshing = isRefreshing
         }
 
-        @Override
-        public void run() {
-            mRefreshLoadLayout.setRefreshing(mIsRefreshing);
-        }
-
-        public Runnable refreshing(boolean refreshing) {
-            mIsRefreshing = refreshing;
-            return this;
+        fun refreshing(refreshing: Boolean): Runnable {
+            isRefreshing = refreshing
+            return this
         }
     }
 
-    private void onSetRefreshing(boolean refreshing) {
-        mTaskRefreshing = refreshing;
-        if (mTaskRefreshing) {
-            notifyRefreshing();
+    private fun onSetRefreshing(refreshing: Boolean) {
+        taskRefreshing = refreshing
+        if (taskRefreshing) {
+            notifyRefreshing()
         }
     }
 
-    public boolean isLoading() {
-        return mTaskLoading;
+    private fun isLoading(): Boolean {
+        return taskLoading
     }
 
-    @Override
-    public boolean isRefreshing() {
-        return mTaskRefreshing || super.isRefreshing();
-    }
-
-    @Override
-    public void setEnabled(boolean enabled) {
-        super.setEnabled(enabled);
-        mRefreshEnable = enabled;
-    }
-
-    private void setLoading(boolean loading) {
-        mTaskLoading = loading;
-        if (mTaskLoading && mOnLoadListener != null) {
-            super.setEnabled(false);
-            mOnLoadListener.onLoad();
+    private fun setLoading(loading: Boolean) {
+        taskLoading = loading
+        if (taskLoading && onLoadListener != null) {
+            super.setEnabled(false)
+            onLoadListener!!.onLoad()
         } else {
-            super.setEnabled(mRefreshEnable);
+            super.setEnabled(refreshEnable)
         }
     }
 
-    public void setStatusLoading(boolean showStatusUi) {
-        setShowStatusAndUi(showStatusUi, Load.STATUS_LOADING);
+    override fun isRefreshing(): Boolean {
+        return taskRefreshing || super.isRefreshing()
     }
 
-    public void setStatusNoMoreData(boolean showStatusUi) {
-        setShowStatusAndUi(showStatusUi, Load.STATUS_LOAD_NO_MORE_DATA);
+    override fun setEnabled(enabled: Boolean) {
+        super.setEnabled(enabled)
+        refreshEnable = enabled
     }
 
-    public void setStatusFailed(boolean showStatusUi) {
-        setShowStatusAndUi(showStatusUi, Load.STATUS_LOAD_FAILED);
+    fun setStatusLoading(showStatusUi: Boolean) {
+        setShowStatusAndUi(showStatusUi, Load.STATUS_LOADING)
     }
 
-    private void setShowStatusAndUi(boolean showLoading, int status) {
-        mShowStatusUi = showLoading;
-        mLoadStatus = status;
-        /*if (mShowStatusUi) {
+    fun setStatusNoMoreData(showStatusUi: Boolean) {
+        setShowStatusAndUi(showStatusUi, Load.STATUS_LOAD_NO_MORE_DATA)
+    }
+
+    fun setStatusFailed(showStatusUi: Boolean) {
+        setShowStatusAndUi(showStatusUi, Load.STATUS_LOAD_FAILED)
+    }
+
+    private fun setShowStatusAndUi(showLoading: Boolean, status: Int) {
+        showStatusUi = showLoading
+        loadStatus = status
+        if (showStatusUi) {
             showLoad();
         } else {
             removeLoad();
-        }*/
-    }
-
-    public int getLoadStatus() {
-        return mLoadStatus;
-    }
-
-    /*private void showLoad() {
-        BaseAdapter baseAdapter = getAdapter();
-        if (baseAdapter == null) {
-            L.GL.logE("baseAdapter==null");
-            return;
         }
-        baseAdapter.showLoad(mLoadStatus);
     }
 
-    private void removeLoad() {
-        BaseAdapter baseAdapter = getAdapter();
-        if (baseAdapter == null) {
-            L.GL.logE("baseAdapter==null");
-            return;
-        }
-        baseAdapter.removeLoad();
-    }*/
+    fun showLoad() {
+        getAdapter()?.showLoad(loadStatus)
+    }
 
+    fun removeLoad() {
+        getAdapter()?.removeLoad()
+    }
 
-    public RecyclerView getRecyclerView() {
-        int gc = getChildCount();
-        RecyclerView view = null;
-        for (int i = 0; i < gc; i++) {
-            if (getChildAt(i) instanceof RecyclerView) {
-                view = (RecyclerView) getChildAt(i);
-                break;
+    fun getRecyclerView(): RecyclerView? {
+        val gc = childCount
+        var view: RecyclerView? = null
+        for (i in 0 until gc) {
+            if (getChildAt(i) is RecyclerView) {
+                view = getChildAt(i) as RecyclerView
+                break
             }
         }
-        return view;
+        return view
     }
 
-    /*private BaseAdapter getAdapter() {
-        BaseAdapter baseAdapter = null;
-        if (mRefreshLoadView instanceof RecyclerView) {
-            RecyclerView.Adapter adapter = ((RecyclerView) mRefreshLoadView).getAdapter();
-            if (adapter instanceof BaseAdapter) {
-                baseAdapter = (BaseAdapter) adapter;
-            }
-        }
-        return baseAdapter;
-    }*/
-
-    public void setOnLoadListener(OnLoadListener onLoadListener) {
-        setOnLoadListener(getRecyclerView(), onLoadListener);
+    fun getAdapter(): Adapter? {
+        return ((refreshLoadView as? RecyclerView)?.adapter) as? Adapter
     }
 
-    public void setOnLoadListener(View view, OnLoadListener onLoadListener) {
-        mOnLoadListener = onLoadListener;
-        mRefreshLoadView = view;
-        addOnScrollListener();
+    fun setOnLoadListener(onLoadListener: OnLoadListener?) {
+        setOnLoadListener(getRecyclerView(), onLoadListener)
     }
 
-    /*public void setOnLoadFailedListener(OnLoadFailedListener onLoadFailedListener) {
-        RecyclerView recyclerView = getRecyclerView();
-        BaseAdapter adapter = (BaseAdapter) recyclerView.getAdapter();
-        adapter.setOnLoadFailedListener(onLoadFailedListener);
-    }*/
+    fun setOnLoadListener(view: View?, onLoadListener: OnLoadListener?) {
+        this.onLoadListener = onLoadListener
+        refreshLoadView = view
+        addOnScrollListener()
+    }
 
-    private void addOnScrollListener() {
-        if (mOnLoadListener != null && mRefreshLoadView != null) {
-            if (mRefreshLoadView instanceof RecyclerView) {
-                ((RecyclerView) mRefreshLoadView).addOnScrollListener(new RecyclerView.OnScrollListener() {
-                    @Override
-                    public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                        if (dy > 0) {//上拉
+    fun setOnLoadFailedListener(onLoadFailedListener: OnLoadFailedListener) {
+        getAdapter()?.onLoadFailedListener = onLoadFailedListener
+    }
+
+    private fun addOnScrollListener() {
+        if (onLoadListener != null && refreshLoadView != null) {
+            if (refreshLoadView is RecyclerView) {
+                (refreshLoadView as RecyclerView).addOnScrollListener(object :
+                    RecyclerView.OnScrollListener() {
+                    override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                        if (dy > 0) { //上拉
                             if (isCanLoad()) {
-                                if ((mShowStatusUi && RecyclerViewScrollUtil.isContentNearBottom(
+                                if (showStatusUi && isContentNearBottom(
                                         recyclerView,
-                                        5)) || RecyclerViewScrollUtil.isContentNearBottom(
-                                        recyclerView)) {//最后一个可见的时候
-                                    setLoading(true);
+                                        5
+                                    ) || isContentNearBottom(
+                                        recyclerView
+                                    )
+                                ) { //最后一个可见的时候
+                                    setLoading(true)
                                 }
                             }
                         }
                     }
-                });
+                })
             }
         }
     }
 
-    @Override
-    public boolean onInterceptTouchEvent(MotionEvent ev) {
-        if (!isEnabled()) {
-            return false;
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        if (!isEnabled) {
+            return false
         }
-        final int action = ev.getActionMasked();
-        switch (action) {
-            case MotionEvent.ACTION_DOWN:
-                mInitialDownYValue = ev.getY();
-                break;
-            case MotionEvent.ACTION_MOVE:
-                float yDiff = ev.getY() - mInitialDownYValue;
+        val action = ev.actionMasked
+        when (action) {
+            MotionEvent.ACTION_DOWN -> initialDownYValue = ev.y
+            MotionEvent.ACTION_MOVE -> {
+                val yDiff = ev.y - initialDownYValue
                 if (yDiff < miniTouchSlop) {
-                    return false;
+                    return false
                 }
-                break;
-            default:
-                break;
-        }
-        return super.onInterceptTouchEvent(ev);
-    }
-
-    public static class Load extends BaseObservable {
-
-        public static final int STATUS_LOADING = 0;
-        public static final int STATUS_LOAD_FAILED = 1;
-        public static final int STATUS_LOAD_NO_MORE_DATA = 2;
-
-        private int status;
-
-        public Load(int status) {
-            this.status = status;
-        }
-
-        @Bindable
-        public int getStatus() {
-            return status;
-        }
-
-        public void setStatus(int status) {
-            this.status = status;
-            notifyPropertyChanged(BR.status);
-        }
-
-        public static String getLoadText(Context context, int status) {
-            if (status == STATUS_LOADING) {
-                return context.getResources().getString(R.string.rlm_loading);
-            } else if (status == STATUS_LOAD_FAILED) {
-                return context.getResources().getString(R.string.rlm_load_failed);
-            } else if (status == STATUS_LOAD_NO_MORE_DATA) {
-                return context.getResources().getString(R.string.rlm_nomore);
             }
-            return "";
+            else -> {}
+        }
+        return super.onInterceptTouchEvent(ev)
+    }
+
+    class Load(private var status: Int) : BaseObservable() {
+        @Bindable
+        fun getStatus(): Int {
+            return status
         }
 
-        public static void setLoadFailed(Load load) {
-            load.setStatus(STATUS_LOAD_FAILED);
+        fun setStatus(status: Int) {
+            this.status = status
+            notifyPropertyChanged(BR.status)
         }
 
-        public static boolean isLoadFailed(int status) {
-            return status == STATUS_LOAD_FAILED;
-        }
+        companion object {
+            const val STATUS_LOADING = 0
+            const val STATUS_LOAD_FAILED = 1
+            const val STATUS_LOAD_NO_MORE_DATA = 2
 
-        public static boolean isLoadNoMoreData(int status) {
-            return status == STATUS_LOAD_NO_MORE_DATA;
-        }
+            @JvmStatic
+            fun getLoadText(context: Context, status: Int): String {
+                if (status == STATUS_LOADING) {
+                    return context.resources.getString(R.string.rlm_loading)
+                } else if (status == STATUS_LOAD_FAILED) {
+                    return context.resources.getString(R.string.rlm_load_failed)
+                } else if (status == STATUS_LOAD_NO_MORE_DATA) {
+                    return context.resources.getString(R.string.rlm_nomore)
+                }
+                return ""
+            }
 
-        public static void setLoadNoMoreData(Load load) {
-            load.setStatus(STATUS_LOAD_NO_MORE_DATA);
-        }
+            @JvmStatic
+            fun setLoadFailed(load: Load) {
+                load.setStatus(STATUS_LOAD_FAILED)
+            }
 
-        public static boolean isLoadLoading(int status) {
-            return status == STATUS_LOADING;
-        }
+            @JvmStatic
+            fun isLoadFailed(status: Int): Boolean {
+                return status == STATUS_LOAD_FAILED
+            }
 
-        public static void setLoadLoading(Load load) {
-            load.setStatus(STATUS_LOADING);
+            @JvmStatic
+            fun isLoadNoMoreData(status: Int): Boolean {
+                return status == STATUS_LOAD_NO_MORE_DATA
+            }
+
+            @JvmStatic
+            fun setLoadNoMoreData(load: Load) {
+                load.setStatus(STATUS_LOAD_NO_MORE_DATA)
+            }
+
+            @JvmStatic
+            fun isLoadLoading(status: Int): Boolean {
+                return status == STATUS_LOADING
+            }
+
+            @JvmStatic
+            fun setLoadLoading(load: Load) {
+                load.setStatus(STATUS_LOADING)
+            }
         }
     }
 
-    public String getStringResource(@StringRes int stringRes) {
-        return getContext().getResources().getString(stringRes);
+    fun getStringResource(@StringRes stringRes: Int): String {
+        return context.resources.getString(stringRes)
     }
 
+    abstract class Adapter(var context: Context) : ExpandableAdapter() {
+        var onLoadFailedListener: OnLoadFailedListener? = null
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            return when (viewType) {
+                getLoadViewType() -> LoadHolder(context, parent, onLoadFailedListener)
+                else -> super.createViewHolder(parent, viewType)
+            }
+        }
+
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            if (holder is LoadHolder) {
+                holder.onBindData(position, getItem(position) as Load)
+            }
+        }
+
+        override fun getItemViewType(position: Int): Int {
+            if (getItem(position) is Load) {
+                return getLoadViewType()
+            }
+            return super.getItemViewType(position)
+        }
+
+        /**
+         * 显示加载更多布局
+         */
+        open fun showLoad(status: Int) {
+            val fc: Int = footerCount
+            if (fc > 0) {
+                val fp = findLoadPosition()
+                if (fp != -1) {
+                    val load = getFooter(fp) as Load?
+                    load!!.setStatus(status)
+                    notifyItemChanged(convertFooterPosition(fp))
+                } else {
+                    addFooter(Load(status))
+                }
+            } else {
+                addFooter(Load(status))
+            }
+        }
+
+        /**
+         * 删除加载更多布局
+         */
+        open fun removeLoad() {
+            val fp = findLoadPosition()
+            if (fp != -1) {
+                removeFooter(fp)
+            }
+        }
+
+        /**
+         * 找到加载更多的位置
+         */
+        protected open fun findLoadPosition(): Int {
+            val fc: Int = footerCount
+            var i: Int = 0
+            while (i < fc) {
+                if (getItemViewType(getFooter(i)) == getLoadViewType()) {
+                    return i
+                }
+                i++
+            }
+            return -1
+        }
+
+        /**
+         * 加载更多布局的ViewType值
+         */
+        open fun getLoadViewType(): Int {
+            return -1
+        }
+    }
 }
