@@ -15,11 +15,10 @@ import com.qinbaowei.refreshloadlayout.databinding.LoadHolderBinding
 
 
 class LoadHolder(
-    private val context: Context?, binding: LoadHolderBinding,
+    private val context: Context?, val binding: LoadHolderBinding,
     private val onLoadFailedListener: OnLoadFailedListener?
 ) : RecyclerView.ViewHolder(binding.root) {
     private var data: Load? = null
-    private val binding: LoadHolderBinding? = null
 
     constructor(
         context: Context?,
