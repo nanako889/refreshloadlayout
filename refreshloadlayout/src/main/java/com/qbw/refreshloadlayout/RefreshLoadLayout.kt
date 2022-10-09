@@ -341,7 +341,7 @@ class RefreshLoadLayout : SwipeRefreshLayout {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             return when (viewType) {
-                getLoadViewType() -> LoadHolder(context, parent, onLoadFailedListener)
+                onGetLoadViewType() -> LoadHolder(context, parent, onLoadFailedListener)
                 else -> super.createViewHolder(parent, viewType)
             }
         }
@@ -353,10 +353,8 @@ class RefreshLoadLayout : SwipeRefreshLayout {
         }
 
         override fun getItemViewType(position: Int): Int {
-            if (getItem(position) is Load) {
-                return getLoadViewType()
-            }
-            return super.getItemViewType(position)
+            return if (getItem(position) is Load) onGetLoadViewType()
+            else super.getItemViewType(position)
         }
 
         /**
@@ -395,7 +393,7 @@ class RefreshLoadLayout : SwipeRefreshLayout {
             val fc: Int = footerCount
             var i: Int = 0
             while (i < fc) {
-                if (getItemViewType(getFooter(i)) == getLoadViewType()) {
+                if (getItemViewType(getFooter(i)) == onGetLoadViewType()) {
                     return i
                 }
                 i++
@@ -406,7 +404,7 @@ class RefreshLoadLayout : SwipeRefreshLayout {
         /**
          * 加载更多布局的ViewType值
          */
-        open fun getLoadViewType(): Int {
+        open fun onGetLoadViewType(): Int {
             return -1
         }
     }
