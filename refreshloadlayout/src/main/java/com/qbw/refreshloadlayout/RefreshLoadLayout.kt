@@ -353,8 +353,11 @@ class RefreshLoadLayout : SwipeRefreshLayout {
         }
 
         override fun getItemViewType(position: Int): Int {
-            return if (getItem(position) is Load) onGetLoadViewType()
-            else super.getItemViewType(position)
+            return getItemViewType(getItem(position))
+        }
+
+        override fun getItemViewType(t: Any?): Int {
+            return if (t is Load) onGetLoadViewType() else super.getItemViewType(t)
         }
 
         /**

@@ -6,7 +6,6 @@ import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.qbw.refreshloadlayout.RefreshLoadLayout.Load
-import com.qbw.refreshloadlayout.RefreshLoadLayout.Load.Companion.getLoadText
 import com.qbw.refreshloadlayout.RefreshLoadLayout.Load.Companion.isLoadFailed
 import com.qbw.refreshloadlayout.RefreshLoadLayout.Load.Companion.setLoadLoading
 import com.qbw.refreshloadlayout.RefreshLoadLayout.OnLoadFailedListener
@@ -33,7 +32,6 @@ class LoadHolder(
 
     fun onBindData(position: Int, data: Load) {
         this.data = data
-        binding!!.txtLoad.text = getLoadText(context!!, data.getStatus())
         binding.load = data
         binding.executePendingBindings()
         itemView.setOnClickListener {

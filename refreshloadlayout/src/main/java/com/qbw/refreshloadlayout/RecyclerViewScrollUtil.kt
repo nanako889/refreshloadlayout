@@ -7,7 +7,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import com.qbw.l.L
-import com.qbw.refreshloadlayout.RecyclerViewScrollUtil
 
 /**
  * @作者 qinbaowei
